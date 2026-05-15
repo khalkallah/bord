@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bord">
+<meta name="theme-color" content="#0a1a10">
+<link rel="manifest" href="manifest.json">
+<title>Feuille de Bord</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=Inter:wght@400;600;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#091410;--card:#0f1e17;--card2:#070f0b;
+  --border:#1a4030;--green:#2d6a4f;--green2:#52b788;--green3:#95d5b2;
+  --text:#e0f0e8;--muted:#5a8a72;--accent:#a8d5a2;
+  --orange:#e07820;--red:#c0392b;--gold:#c8a840;--blue:#4a90a4;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;
+  display:flex;flex-direction:column;max-width:480px;margin:0 auto}
+
+.header{background:linear-gradient(180deg,#0f2218,#091410);padding:12px 14px 10px;
+  display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.logo{width:36px;height:36px;background:linear-gradient(135deg,#1a4030,#2d6a4f);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;
+  border:1px solid var(--green2)}
+.htitle{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:var(--green2);letter-spacing:2px}
+.hsub{font-size:10px;color:var(--muted);margin-top:1px;font-family:'IBM Plex Mono',monospace}
+.hright{margin-left:auto}
+.tbadge{background:#0f2218;border:1px solid var(--border);border-radius:7px;
+  padding:3px 8px;text-align:center;font-family:'IBM Plex Mono',monospace}
+.tnum{font-size:16px;font-weight:700;color:var(--green2);display:block;line-height:1.1}
+.tmo{font-size:9px;color:var(--muted)}
+
+.mbar{background:#060f0a;padding:7px 12px;display:flex;gap:6px;align-items:center;
+  border-bottom:1px solid var(--border);flex-shrink:0}
+.mbar select{background:#0f1e17;border:1px solid var(--border);color:var(--text);
+  border-radius:7px;padding:6px 8px;font-size:13px;flex:1;font-family:'Inter',sans-serif}
+.sbadge{background:#0f2218;border:1px solid var(--green);border-radius:5px;
+  padding:3px 8px;font-size:10px;color:var(--green2);white-space:nowrap;
+  font-family:'IBM Plex Mono',monospace}
+
+.tabs{display:flex;padding:7px 10px;gap:5px;background:var(--bg);flex-shrink:0;
+  border-bottom:1px solid var(--border)}
+.tab{flex:1;background:#0f1e17;border:1px solid var(--border);color:var(--muted);
+  border-radius:8px;padding:9px 4px;font-size:12px;cursor:pointer;font-weight:700;
+  transition:all .2s;font-family:'Inter',sans-serif}
+.tab.active{background:var(--green);color:#fff;border-color:var(--green2);
+  box-shadow:0 2px 14px rgba(45,106,79,.4)}
+
+.scroll-area{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+
+.card{margin:9px 10px;background:var(--card);border-radius:12px;padding:14px;
+  border:1px solid var(--border)}
+.ctitle{font-size:11px;font-weight:700;color:var(--green3);margin-bottom:11px;
+  padding-bottom:8px;border-bottom:1px solid var(--border);
+  font-family:'IBM Plex Mono',monospace;letter-spacing:.5px}
+.lbl{font-size:11px;color:var(--muted);margin-bottom:5px;margin-top:10px;
+  font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+
+/* CARRY-OVER */
+.carryover{background:linear-gradient(135deg,#0a1e30,#071525);border-radius:10px;
+  padding:13px;margin-bottom:12px;border:1px solid var(--blue)}
+.co-title{font-size:12px;font-weight:800;color:#6ab4cc;margin-bottom:5px;
+  text-transform:uppercase;letter-spacing:.5px}
+.co-km{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;
+  color:#6ab4cc;background:#071525;border-radius:7px;padding:5px 12px;
+  display:inline-block;border:1px solid rgba(74,144,164,.4);margin:6px 0}
+.co-btns{display:flex;gap:7px;margin-top:10px}
+.co-yes{background:var(--blue);color:#fff;border:none;border-radius:8px;
+  padding:10px;font-size:12px;font-weight:700;cursor:pointer;flex:2;font-family:'Inter',sans-serif}
+.co-no{background:transparent;color:var(--muted);border:1px solid var(--border);
+  border-radius:8px;padding:10px;font-size:12px;cursor:pointer;flex:1;font-family:'Inter',sans-serif}
+
+.initbox{background:var(--card2);border-radius:9px;padding:11px;margin-bottom:12px;
+  border:1px solid var(--green)}
+
+/* ODOMETER INPUT DISPLAY */
+.odo-display{background:var(--card2);border-radius:10px;padding:12px;
+  margin-bottom:10px;border:1px solid var(--border);text-align:center}
+.odo-prev{font-size:11px;color:var(--muted);margin-bottom:4px;font-family:'IBM Plex Mono',monospace}
+.odo-arrow{font-size:11px;color:var(--muted);margin:2px 0}
+.odo-calc{font-size:13px;color:var(--green2);font-weight:700;font-family:'IBM Plex Mono',monospace}
+
+/* DAY GRID */
+.daygrid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:6px}
+.daybtn{background:#0f1e17;border:1px solid #1a3028;color:var(--muted);border-radius:6px;
+  padding:8px 2px;font-size:11px;cursor:pointer;text-align:center;transition:all .12s;
+  font-family:'IBM Plex Mono',monospace;font-weight:700}
+.daybtn:active{transform:scale(.88)}
+.daybtn.sel{background:var(--green);color:#fff;border-color:var(--green2);
+  box-shadow:0 0 8px rgba(82,183,136,.3)}
+.daybtn.done{background:#0f2a1a;color:var(--green2);border-color:var(--green)}
+.daybtn.fuel{background:#1e0e00;color:var(--orange);border-color:var(--orange)}
+.daybtn.both{background:#1a2000;color:var(--gold);border-color:var(--gold)}
+.daybtn.off{opacity:.35;cursor:default}
+
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.leg{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)}
+.leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+
+/* INPUTS */
+input[type=number]{background:var(--card2);border:1.5px solid var(--border);color:var(--text);
+  border-radius:9px;padding:14px;font-size:22px;text-align:center;width:100%;
+  font-family:'IBM Plex Mono',monospace;font-weight:700;transition:border-color .2s}
+input[type=number]:focus{outline:none;border-color:var(--green2);
+  box-shadow:0 0 0 3px rgba(82,183,136,.1)}
+.existing{background:var(--card2);border-radius:8px;padding:10px 14px;
+  font-family:'IBM Plex Mono',monospace;border-left:3px solid var(--green2);margin-bottom:8px}
+.ex-odo{font-size:18px;font-weight:700;color:var(--green2)}
+.ex-daily{font-size:12px;color:var(--muted);margin-top:3px}
+
+.btn{background:linear-gradient(135deg,#2d6a4f,#1e4d38);color:#fff;
+  border:1px solid var(--green2);border-radius:9px;padding:13px 14px;font-size:13px;
+  font-weight:700;cursor:pointer;transition:all .13s;font-family:'Inter',sans-serif;
+  text-transform:uppercase;letter-spacing:.5px;width:100%;margin-top:10px}
+.btn:active{transform:scale(.96)}
+.btn2{background:var(--card2);color:var(--muted);border:1px solid var(--border);
+  border-radius:9px;padding:11px;font-size:11px;font-weight:600;cursor:pointer;
+  font-family:'Inter',sans-serif;width:100%;margin-top:6px}
+.btn2:active{transform:scale(.96)}
+.btnxl{background:linear-gradient(135deg,#0f2218,#1a4030);color:var(--green2);
+  border:1.5px solid var(--green2);border-radius:9px;padding:14px;font-size:14px;
+  font-weight:800;cursor:pointer;width:100%;margin-top:10px;font-family:'Inter',sans-serif;
+  text-transform:uppercase;letter-spacing:.5px}
+.btnxl:active{transform:scale(.97)}
+
+.fuellist{margin-top:12px;border-top:1px solid var(--border);padding-top:10px}
+.flitem{display:flex;justify-content:space-between;align-items:center;
+  background:var(--card2);border-radius:7px;padding:8px 12px;margin-bottom:4px;
+  border-left:3px solid var(--orange)}
+.fl-day{font-size:11px;color:var(--muted)}
+.fl-km{font-size:11px;color:var(--green2);font-family:'IBM Plex Mono',monospace}
+.fl-l{font-size:13px;color:var(--orange);font-family:'IBM Plex Mono',monospace;font-weight:700}
+.fl-del{background:none;border:none;color:#5a2020;font-size:16px;cursor:pointer;padding:0 4px}
+
+.stats{display:flex;gap:6px;margin-bottom:12px}
+.stat{flex:1;background:var(--card2);border-radius:9px;padding:10px 5px;
+  text-align:center;border:1px solid var(--border)}
+.statv{font-size:18px;font-weight:900;color:var(--green2);font-family:'IBM Plex Mono',monospace}
+.statl{font-size:9px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.3px}
+
+.tscroll{overflow-x:auto;border-radius:8px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{background:#0f2218;color:var(--green3);padding:7px 6px;text-align:center;
+  font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.5px}
+td{padding:7px 6px;text-align:center;border-bottom:1px solid #0a1510;
+  color:#b0d0b8;font-family:'IBM Plex Mono',monospace}
+.trfuel td{color:var(--orange)}
+.troff td{color:#2a4a38;font-style:italic}
+tfoot td{background:#0f2218;font-weight:700;color:var(--green2)}
+
+.infobox{margin-top:11px;background:var(--card2);border-radius:9px;padding:10px;
+  font-size:10px;color:var(--muted);display:flex;flex-direction:column;gap:3px;
+  border:1px solid var(--border);font-family:'IBM Plex Mono',monospace}
+
+#toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-90px);
+  padding:10px 20px;border-radius:9px;color:#fff;font-weight:700;z-index:999;
+  font-size:12px;box-shadow:0 4px 24px rgba(0,0,0,.6);max-width:92%;text-align:center;
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;
+  font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:.5px}
+#toast.show{transform:translateX(-50%) translateY(0)}
+
+.view{display:none}.view.active{display:block}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">🚗</div>
+  <div>
+    <div class="htitle">FEUILLE DE BORD</div>
+    <div class="hsub">KHALKALLAH · 54356-B-7 · DEE</div>
+  </div>
+  <div class="hright">
+    <div class="tbadge">
+      <span class="tnum" id="todayNum">--</span>
+      <span class="tmo"  id="todayMo"></span>
+    </div>
+  </div>
+</div>
+
+<!-- MONTH BAR -->
+<div class="mbar">
+  <select id="selMonth" onchange="onMonthChange()"></select>
+  <select id="selYear"  onchange="onMonthChange()"></select>
+  <span class="sbadge" id="startBadge" style="display:none"></span>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('daily',this)">📅 JOURNALIER</button>
+  <button class="tab" onclick="switchTab('fuel',this)">⛽ CARBURANT</button>
+  <button class="tab" onclick="switchTab('summary',this)">📊 RAPPORT</button>
+</div>
+
+<div class="scroll-area">
+
+<!-- ══════════ TAB JOURNALIER ══════════ -->
+<div id="vdaily" class="view active">
+  <div class="card">
+    <div class="ctitle">// RELEVÉ COMPTEUR KILOMÉTRIQUE</div>
+
+    <!-- CARRY-OVER -->
+    <div class="carryover" id="carryoverBox" style="display:none">
+      <div class="co-title">↪ Report du mois précédent</div>
+      <div style="font-size:12px;color:#7aaabb;margin-bottom:4px">Dernier relevé compteur :</div>
+      <div class="co-km" id="coKmVal">---</div>
+      <div style="font-size:11px;color:#5a8a9a;margin-top:4px">
+        Utiliser comme compteur de début de ce mois ?
+      </div>
+      <div class="co-btns">
+        <button class="co-yes" onclick="applyCarryover()">✓ Oui, utiliser</button>
+        <button class="co-no"  onclick="dismissCarryover()">Non, saisie manuelle</button>
+      </div>
+    </div>
+
+    <!-- INIT KM -->
+    <div id="initSection" class="initbox" style="display:none">
+      <div class="lbl">Compteur au début du mois (km)</div>
+      <p style="font-size:11px;color:var(--muted);margin:4px 0 8px">
+        Relevé du compteur le 1er jour — à saisir une seule fois
+      </p>
+      <div style="display:flex;gap:7px;align-items:center">
+        <input type="number" id="startKmIn" style="flex:1;font-size:18px" placeholder="Ex: 45176">
+        <button onclick="saveStartKm()" style="background:var(--green);color:#fff;
+          border:1px solid var(--green2);border-radius:9px;padding:13px 14px;font-size:12px;
+          font-weight:700;cursor:pointer;white-space:nowrap;font-family:Inter,sans-serif">
+          VALIDER
+        </button>
+      </div>
+    </div>
+
+    <!-- DAY SELECTOR -->
+    <div class="lbl">Sélectionner le jour</div>
+    <div class="daygrid" id="dayGridD"></div>
+    <div class="legend">
+      <span class="leg"><span class="leg-dot" style="background:#0f2a1a;border:1px solid var(--green)"></span>Relevé</span>
+      <span class="leg"><span class="leg-dot" style="background:#1e0e00;border:1px solid var(--orange)"></span>Carburant</span>
+      <span class="leg"><span class="leg-dot" style="background:#1a2000;border:1px solid var(--gold)"></span>Les deux</span>
+      <span class="leg"><span class="leg-dot" style="opacity:.35;background:#0f1e17;border:1px solid #1a3028"></span>Congé</span>
+    </div>
+
+    <!-- EXISTING VALUE -->
+    <div id="existingD"></div>
+
+    <!-- PREVIOUS KM DISPLAY -->
+    <div class="odo-display" id="odoDisplay" style="display:none">
+      <div class="odo-prev" id="odoPrev"></div>
+      <div class="odo-arrow">↓</div>
+      <div class="odo-calc" id="odoCalc"></div>
+    </div>
+
+    <!-- INPUT -->
+    <div class="lbl" id="dayLabel">COMPTEUR AUJOURD'HUI (km affiché sur l'odométre)</div>
+    <input type="number" id="kmIn" placeholder="Ex: 47250"
+      oninput="previewDaily()" onkeydown="if(event.key==='Enter')saveKm()">
+    <button class="btn" onclick="saveKm()">💾 ENREGISTRER</button>
+    <button class="btn2" onclick="toggleDayOff()" id="dayOffBtn"></button>
+  </div>
+</div>
+
+<!-- ══════════ TAB CARBURANT ══════════ -->
+<div id="vfuel" class="view">
+  <div class="card">
+    <div class="ctitle">// RAVITAILLEMENT CARBURANT</div>
+    <div class="lbl">Jour du ravitaillement</div>
+    <div class="daygrid" id="dayGridF"></div>
+
+    <div class="lbl">Compteur au moment du ravitaillement (km)</div>
+    <input type="number" id="fuelKmIn" placeholder="Ex: 45434" style="margin-top:5px">
+
+    <div class="lbl">Quantité (litres)</div>
+    <input type="number" id="fuelLIn" step="0.01" placeholder="Ex: 50.40" style="margin-top:5px">
+
+    <button class="btn" onclick="saveFuel()">⛽ ENREGISTRER</button>
+    <div id="fuelListDiv"></div>
+  </div>
+</div>
+
+<!-- ══════════ TAB RAPPORT ══════════ -->
+<div id="vsummary" class="view">
+  <div class="card">
+    <div class="ctitle" id="sumTitle">// RAPPORT MENSUEL</div>
+    <div class="stats" id="statsRow"></div>
+    <div class="tscroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Jour</th>
+            <th>Compteur</th>
+            <th>Parcours</th>
+            <th>Carb. L</th>
+          </tr>
+        </thead>
+        <tbody id="sumBody"></tbody>
+        <tfoot id="sumFoot"></tfoot>
+      </table>
+    </div>
+    <button class="btnxl" onclick="exportExcel()">📥 TÉLÉCHARGER FEUILLE DE BORD (.xlsx)</button>
+    <div class="infobox" id="infoBox"></div>
+  </div>
+</div>
+
+</div><!-- scroll-area -->
+
+<script>
+// ══════════════════════════════════════════════════════
+const MONTHS_FR    = ["Janvier","Février","Mars","Avril","Mai","Juin",
+  "Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+const MONTHS_SHORT = ["JAN","FÉV","MAR","AVR","MAI","JUN","JUL","AOÛ","SEP","OCT","NOV","DÉC"];
+const V = {nom:"KHALKALLAH",mat:"7577",immat:"54356-B-7",veh:"EE313",unite:"DEE",section:"EES0090"};
+const KEY = "fdb_v8";
+
+let selDay = new Date().getDate();
+let data   = {};
+let carryoverDismissed = false;
+try { data = JSON.parse(localStorage.getItem(KEY)) || {}; } catch {}
+
+// Init selects
+const ms = document.getElementById("selMonth");
+const ys = document.getElementById("selYear");
+MONTHS_FR.forEach((m,i) => {
+  const o = document.createElement("option"); o.value=i; o.textContent=m; ms.appendChild(o);
+});
+[2025,2026,2027].forEach(y => {
+  const o = document.createElement("option"); o.value=y; o.textContent=y; ys.appendChild(o);
+});
+const now = new Date();
+ms.value = now.getMonth(); ys.value = now.getFullYear();
+document.getElementById("todayNum").textContent = now.getDate();
+document.getElementById("todayMo").textContent  = MONTHS_SHORT[now.getMonth()];
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// ── HELPERS ──────────────────────────────────────────
+function save()        { localStorage.setItem(KEY, JSON.stringify(data)); }
+function getKey()      { return `${ys.value}-${ms.value}`; }
+function getMD()       { return data[getKey()] || {odo:{}, fuel:[], startKm:null, offDays:[]}; }
+function daysInMonth() { return new Date(+ys.value, +ms.value+1, 0).getDate(); }
+
+// Trouver le relevé précédent (jour d-1 ou startKm)
+function getPrevOdo(day) {
+  const md = getMD();
+  for (let d = day-1; d >= 1; d--) {
+    if (md.odo[d]) return md.odo[d];
+  }
+  return md.startKm || null;
+}
+
+// Dernier relevé du mois précédent
+function getPrevMonthLastOdo() {
+  let m=parseInt(ms.value), y=parseInt(ys.value);
+  m--; if (m<0) { m=11; y--; }
+  const pd = data[`${y}-${m}`];
+  if (!pd?.odo) return null;
+  const days = Object.keys(pd.odo).map(Number).sort((a,b)=>b-a);
+  return days.length ? pd.odo[days[0]] : null;
+}
+
+let toastTimer;
+function showToast(msg, err=false) {
+  const t = document.getElementById("toast");
+  t.textContent=msg; t.style.background=err?"#7a1a1a":"#1a5e38";
+  t.classList.add("show"); clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove("show"), 2800);
+}
+
+function switchTab(id, btn) {
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));
+  document.getElementById("v"+id).classList.add("active");
+  btn.classList.add("active"); renderAll();
+}
+
+// ── CARRY-OVER ────────────────────────────────────────
+function onMonthChange() { carryoverDismissed=false; selDay=1; renderAll(); }
+
+function checkCarryover() {
+  const md  = getMD();
+  const box = document.getElementById("carryoverBox");
+  const ini = document.getElementById("initSection");
+  if (md.startKm) { box.style.display="none"; ini.style.display="none"; return; }
+  const prev = getPrevMonthLastOdo();
+  if (prev && !carryoverDismissed) {
+    document.getElementById("coKmVal").textContent = prev.toLocaleString() + " km";
+    box.style.display=""; ini.style.display="none";
+  } else {
+    box.style.display="none"; ini.style.display="";
+  }
+}
+
+function applyCarryover() {
+  const prev = getPrevMonthLastOdo(); if (!prev) return;
+  const md = getMD(); md.startKm=prev; data[getKey()]=md; save();
+  document.getElementById("carryoverBox").style.display="none";
+  showToast("✓ DÉBUT: " + prev.toLocaleString() + " KM"); renderAll();
+}
+
+function dismissCarryover() {
+  carryoverDismissed=true;
+  document.getElementById("carryoverBox").style.display="none";
+  document.getElementById("initSection").style.display="";
+}
+
+// ── PREVIEW WHILE TYPING ──────────────────────────────
+function previewDaily() {
+  const val  = parseInt(document.getElementById("kmIn").value);
+  const prev = getPrevOdo(selDay);
+  const box  = document.getElementById("odoDisplay");
+  const prevEl  = document.getElementById("odoPrev");
+  const calcEl  = document.getElementById("odoCalc");
+
+  if (!val || !prev) { box.style.display="none"; return; }
+
+  const daily = val - prev;
+  box.style.display="";
+  prevEl.textContent = `Dernier relevé: ${prev.toLocaleString()} km`;
+
+  if (daily > 0) {
+    calcEl.textContent = `Parcours calculé: ${daily} km ✓`;
+    calcEl.style.color = "var(--green2)";
+  } else if (daily === 0) {
+    calcEl.textContent = "Même valeur que le relevé précédent";
+    calcEl.style.color = "var(--gold)";
+  } else {
+    calcEl.textContent = `⚠ Valeur inférieure au relevé précédent (${prev.toLocaleString()} km)`;
+    calcEl.style.color = "var(--red)";
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────
+function renderAll() {
+  checkCarryover();
+  renderDayGrid("dayGridD", false);
+  renderDayGrid("dayGridF", true);
+  renderExisting();
+  renderFuelList();
+  renderSummary();
+  updateBadge();
+  updateDayOffBtn();
+  document.getElementById("odoDisplay").style.display="none";
+  document.getElementById("kmIn").value="";
+  document.getElementById("dayLabel").textContent =
+    `COMPTEUR — JOUR ${selDay} ${MONTHS_FR[ms.value]} (km sur l'odométre)`;
+}
+
+function updateBadge() {
+  const md=getMD(), b=document.getElementById("startBadge");
+  if (md.startKm) { b.textContent=md.startKm.toLocaleString()+" km"; b.style.display=""; }
+  else b.style.display="none";
+}
+
+function updateDayOffBtn() {
+  const md  = getMD();
+  const off = (md.offDays||[]).includes(selDay);
+  const has = !!md.odo[selDay];
+  const btn = document.getElementById("dayOffBtn");
+  btn.textContent = off ? "✓ CONGÉ/REPOS — Cliquer pour annuler" : "🏖️ MARQUER COMME CONGÉ / REPOS";
+  btn.style.color = off ? "var(--gold)" : "";
+  btn.style.borderColor = off ? "var(--gold)" : "";
+  btn.style.display = has ? "none" : "";
+}
+
+function renderDayGrid(gid, isFuel) {
+  const md   = getMD();
+  const grid = document.getElementById(gid);
+  const off  = md.offDays || [];
+  grid.innerHTML = "";
+  for (let d=1; d<=daysInMonth(); d++) {
+    const btn   = document.createElement("button");
+    btn.className = "daybtn"; btn.textContent = d;
+    const hk    = !!md.odo[d];
+    const hf    = (md.fuel||[]).some(f=>f.day===d);
+    const isOff = off.includes(d) && !hk && !hf;
+    if (d === selDay)  btn.classList.add("sel");
+    else if (isOff)    btn.classList.add("off");
+    else if (!isFuel) {
+      if (hk&&hf) btn.classList.add("both");
+      else if (hk) btn.classList.add("done");
+      else if (hf) btn.classList.add("fuel");
+    } else {
+      if (hf) btn.classList.add("fuel");
+      else if (hk) btn.classList.add("done");
+    }
+    btn.onclick = () => { selDay=d; renderAll(); };
+    grid.appendChild(btn);
+  }
+}
+
+function renderExisting() {
+  const md  = getMD();
+  const off = (md.offDays||[]).includes(selDay);
+  const odo = md.odo[selDay];
+  const div = document.getElementById("existingD");
+  if (odo) {
+    const prev  = getPrevOdo(selDay);
+    const daily = prev ? odo - prev : null;
+    div.innerHTML = `
+      <div class="existing">
+        <div class="ex-odo">📍 ${odo.toLocaleString()} km</div>
+        <div class="ex-daily">${daily!==null ? `Parcours: ${daily} km` : "Premier relevé du mois"}</div>
+      </div>`;
+  } else if (off) {
+    div.innerHTML = `<div class="existing" style="border-color:var(--gold)">
+      <div class="ex-odo" style="color:var(--gold)">🏖️ Congé / Repos</div></div>`;
+  } else {
+    div.innerHTML = "";
+  }
+}
+
+function renderFuelList() {
+  const md  = getMD();
+  const div = document.getElementById("fuelListDiv");
+  if (!md.fuel?.length) { div.innerHTML=""; return; }
+  let h = `<div class="fuellist">
+    <div class="lbl" style="margin-top:0">Ravitaillements — ${MONTHS_FR[ms.value]}</div>`;
+  [...md.fuel].sort((a,b)=>a.day-b.day).forEach((f,i) => {
+    h += `<div class="flitem">
+      <span class="fl-day">Jour ${f.day}</span>
+      <span class="fl-km">${f.km.toLocaleString()} km</span>
+      <span class="fl-l">${f.liters} L</span>
+      <button class="fl-del" onclick="deleteFuel(${i})">✕</button>
+    </div>`;
+  });
+  h += "</div>"; div.innerHTML=h;
+}
+
+function renderSummary() {
+  const md = getMD(), n = daysInMonth();
+  const off = md.offDays || [];
+  let totalKm=0, totalL=0, rows=[];
+  let prevOdo = md.startKm || null;
+
+  for (let d=1; d<=n; d++) {
+    const odo    = md.odo[d] || null;
+    const daily  = (odo && prevOdo && odo > prevOdo) ? odo - prevOdo : null;
+    if (daily) totalKm += daily;
+    const fuels  = (md.fuel||[]).filter(f=>f.day===d);
+    const liters = fuels.reduce((s,f)=>s+f.liters, 0);
+    if (liters) totalL += liters;
+    const isOff  = off.includes(d) && !odo && !liters;
+    if (odo || liters || isOff)
+      rows.push({ d, odo, daily, liters, isOff });
+    if (odo) prevOdo = odo;
+  }
+
+  const lastOdo = prevOdo;
+  const conso = (totalKm>0&&totalL>0) ? ((totalL/totalKm)*100).toFixed(2) : "--";
+
+  document.getElementById("sumTitle").textContent =
+    `// ${MONTHS_FR[ms.value].toUpperCase()} ${ys.value}`;
+  document.getElementById("statsRow").innerHTML = `
+    <div class="stat"><div class="statv">${totalKm.toLocaleString()}</div><div class="statl">Total km</div></div>
+    <div class="stat"><div class="statv">${totalL.toFixed(1)}</div><div class="statl">Total L</div></div>
+    <div class="stat"><div class="statv">${conso}</div><div class="statl">L/100km</div></div>`;
+
+  document.getElementById("sumBody").innerHTML = rows.map(r => `
+    <tr class="${r.isOff?'troff':r.liters&&!r.odo?'trfuel':''}">
+      <td>${r.d}</td>
+      <td style="color:${r.odo?'var(--green2)':'inherit'}">${r.odo ? r.odo.toLocaleString() : r.isOff ? "Congé" : "—"}</td>
+      <td>${r.daily || "—"}</td>
+      <td style="color:${r.liters?'var(--orange)':'inherit'}">${r.liters?r.liters.toFixed(2):"—"}</td>
+    </tr>`).join("");
+
+  document.getElementById("sumFoot").innerHTML = `
+    <tr><td colspan="2">TOTAL</td>
+        <td>${totalKm.toLocaleString()}</td>
+        <td style="color:var(--orange)">${totalL.toFixed(2)}</td></tr>
+    <tr><td colspan="2" style="color:var(--muted);font-size:9px">DERNIER COMPTEUR</td>
+        <td colspan="2" style="color:var(--blue)">${lastOdo ? lastOdo.toLocaleString()+" km" : "—"}</td></tr>`;
+
+  document.getElementById("infoBox").innerHTML = `
+    <div>CONDUCTEUR: ${V.nom} | MAT: ${V.mat}</div>
+    <div>IMMAT: ${V.immat} | UNITÉ: ${V.unite} | SECTION: ${V.section}</div>`;
+}
+
+// ── ACTIONS ──────────────────────────────────────────
+function saveStartKm() {
+  const km = parseInt(document.getElementById("startKmIn").value);
+  if (!km||km<=0) return showToast("VALEUR INVALIDE",true);
+  const md = getMD(); md.startKm=km; data[getKey()]=md; save();
+  document.getElementById("startKmIn").value="";
+  showToast("✓ DÉBUT DU MOIS: "+km.toLocaleString()+" KM"); renderAll();
+}
+
+function saveKm() {
+  const odo = parseInt(document.getElementById("kmIn").value);
+  if (!odo||odo<=0) return showToast("VALEUR INVALIDE",true);
+
+  const md   = getMD();
+  if (!md.startKm) return showToast("DÉFINIR D'ABORD LE COMPTEUR DE DÉBUT",true);
+
+  const prev  = getPrevOdo(selDay);
+  const daily = prev ? odo - prev : null;
+
+  // Validation
+  if (prev && odo < prev)
+    return showToast(`⚠ VALEUR INFÉRIEURE AU RELEVÉ PRÉCÉDENT (${prev.toLocaleString()} km)`,true);
+  if (daily && daily > 600)
+    return showToast(`⚠ PARCOURS INHABITUELLEMENT ÉLEVÉ: ${daily} km — Vérifier`,true);
+
+  md.offDays = (md.offDays||[]).filter(d=>d!==selDay);
+  md.odo[selDay] = odo;
+  data[getKey()] = md; save();
+  document.getElementById("kmIn").value="";
+
+  const msg = daily
+    ? `✓ JOUR ${selDay}: ${odo.toLocaleString()} km — PARCOURS: ${daily} km`
+    : `✓ JOUR ${selDay}: ${odo.toLocaleString()} km`;
+  showToast(msg); renderAll();
+}
+
+function saveFuel() {
+  const km = parseInt(document.getElementById("fuelKmIn").value);
+  const L  = parseFloat(document.getElementById("fuelLIn").value);
+  if (!km||!L) return showToast("DONNÉES INCOMPLÈTES",true);
+  const md = getMD();
+  md.fuel = [...(md.fuel||[]), {km, liters:L, day:selDay}];
+  data[getKey()]=md; save();
+  document.getElementById("fuelKmIn").value="";
+  document.getElementById("fuelLIn").value="";
+  showToast(`✓ RAVITAILLEMENT: ${L}L @ ${km.toLocaleString()} KM`);
+  renderAll();
+}
+
+function deleteFuel(idx) {
+  const md = getMD(); md.fuel.splice(idx,1);
+  data[getKey()]=md; save();
+  showToast("Ravitaillement supprimé"); renderAll();
+}
+
+function toggleDayOff() {
+  const md  = getMD();
+  md.offDays = md.offDays||[];
+  const idx = md.offDays.indexOf(selDay);
+  if (idx>=0) { md.offDays.splice(idx,1); showToast("Congé annulé"); }
+  else         { md.offDays.push(selDay);  showToast("🏖️ CONGÉ ENREGISTRÉ"); }
+  data[getKey()]=md; save(); renderAll();
+}
+
+// ── EXCEL EXPORT ─────────────────────────────────────
+// Format identique au modèle original (colonnes B-G)
+function exportExcel() {
+  const md    = getMD();
+  const n     = daysInMonth();
+  const mname = MONTHS_FR[ms.value];
+  const yr    = ys.value;
+  const off   = md.offDays || [];
+
+  let totalKm=0, totalL=0;
+  let prevOdo = md.startKm || null;
+  const dayRows = [];
+
+  for (let d=1; d<=n; d++) {
+    const odo    = md.odo[d] || null;
+    const daily  = (odo && prevOdo && odo > prevOdo) ? odo - prevOdo : null;
+    if (daily) totalKm += daily;
+    const fuels  = (md.fuel||[]).filter(f=>f.day===d);
+    const liters = fuels.reduce((s,f)=>s+f.liters, 0);
+    const fuelKm = fuels.length ? fuels[0].km : null;
+    if (liters) totalL += liters;
+    const isOff  = off.includes(d) && !odo;
+    dayRows.push({ d, odo, daily, liters, fuelKm, isOff });
+    if (odo) prevOdo = odo;
+  }
+
+  const conso = (totalKm>0&&totalL>0) ? ((totalL/totalKm)*100).toFixed(2) : "";
+
+  const entretien = [
+    "km au compteur","Moteur : ……………………………………………",
+    "Boite à vitesse : ………………………………….","Pont : ………………………………………………",
+    "km au compteur pour remplacement",
+    "* Filtre à aire : ………………………………………",
+    "* Filtre à Gasoil/Essence : ……………………….",
+    "* Filtre à huile : …………………………………….",
+    "* Chaine de distribution : …………………………",
+    "* Courroie d'alternateur : ………………………..","* Bougies : …………………………………………",
+    "km au compteur pour prochaine révision systématique :",
+    "","Observations :","","","","","","","","","","","","","","","","","",""
+  ];
+
+  const aoa = [];
+  // En-têtes
+  aoa.push(["","","",`FEUILLE DE BORD`,"","","","","","","","",""]);
+  aoa.push(["","Mois",mname.toUpperCase(),"","Année","",yr,"","","","","",""]);
+  aoa.push(["","N° Véhicule",V.veh,"Nom Conducteur","",V.nom,"","Matricule : "+V.mat,"","","","",""]);
+  aoa.push(["","N° Immatriculation","",V.immat,"Unité d'attachement",V.unite,"Section Analytique",V.section,"","","","",""]);
+  aoa.push([]);
+  aoa.push(["","Date","Km au compteur","Total journalier","Consommation","","Tableau d'entretien du véhicule","","","","","",""]);
+  aoa.push(["","","","","Quantité de carburant","Km au compteur","","","","","","",""]);
+
+  // Données journalières
+  dayRows.forEach((r, i) => {
+    aoa.push([
+      "",
+      r.d,
+      r.odo || (r.isOff ? "Congé" : ""),
+      r.daily || "",
+      r.liters || "",
+      r.fuelKm || "",
+      entretien[i] || "",
+      "","","","","",""
+    ]);
+  });
+
+  // Totaux
+  aoa.push(["","Total en fin du mois","",totalKm, totalL,"","","","","","","",""]);
+  aoa.push(["","Consommation aux 100 Km","",conso,"","","","","","","","",""]);
+  aoa.push([]);
+  aoa.push(["","VISA du Conducteur","","","","VISA du Responsable du Service","","","","","","",""]);
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = [
+    {wch:2},{wch:6},{wch:14},{wch:14},{wch:14},{wch:14},{wch:32},
+    {wch:4},{wch:4},{wch:4},{wch:4},{wch:4},{wch:4}
+  ];
+  ws["!merges"] = [
+    {s:{r:0,c:3},e:{r:0,c:7}},
+    {s:{r:5,c:4},e:{r:5,c:5}},
+    {s:{r:5,c:6},e:{r:5,c:12}},
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, mname.substring(0,31));
+  XLSX.writeFile(wb, `FeuilleBord_${V.mat}_${mname}_${yr}.xlsx`);
+  showToast("✓ FEUILLE DE BORD TÉLÉCHARGÉE");
+}
+
+renderAll();
+</script>
+</body>
+</html>
